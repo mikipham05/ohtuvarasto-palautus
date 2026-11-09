@@ -1,36 +1,54 @@
-import requests
-from player import Player
+
+from rich.console import Console
+from rich.table import Table
+from rich.prompt import Prompt
+
+from player_reader import PlayerReader
+from player_stats import PlayerStats
+
 
 def main():
-    url = "https://studies.cs.helsinki.fi/nhlstats/2024-25/players"
-    response = requests.get(url)
-    players_data = response.json()
+    console = Console()
 
-    players = []
-
-    for player_dict in players_data:
-        player = Player(player_dict)
-        players.append(player)
-
-    finnish_players = []
-
-    for player in players:
-        if player.nationality=="FIN":
-            finnish_players.append(player)
-
-    finnish_players.sort(
-        key=lambda player: player.goals + player.assists,
-        reverse=True
+    nationality = Prompt.ask(
+        "Enter nationality (e.g. FIN, SWE, CAN)",
+        default="FIN"
     )
-    
-    print("Finnish NHL players:")
 
-    for player in finnish_players:
-        print(
-            f"{player.name}: {player.goals} goals, "
-            f"{player.assists} assists, "
-            f"points: {player.goals + player.assists} points"
+    season = Prompt.ask(
+        "Enter season (e.g. 2024-25)",
+        default="2024-25"
+    )
+
+    url = f"https://studies.cs.helsinki.fi/nhlstats/{season}/players"
+
+    reader = PlayerReader(url)
+    players = reader.get_players()
+
+    stats = PlayerStats(players)
+    selected_players = stats.top_scorers_by_nationality(
+        nationality.upper()
+    )
+
+    table = Table(title=f"NHL players: {nationality.upper()} ({season})")
+
+    table.add_column("Player")
+    table.add_column("Goals", justify="right")
+    table.add_column("Assists", justify="right")
+    table.add_column("Points", justify="right")
+
+    for player in selected_players:
+        points = player.goals + player.assists
+
+        table.add_row(
+            player.name,
+            str(player.goals),
+            str(player.assists),
+            str(points)
         )
+
+    console.print(table)
+
 
 if __name__ == "__main__":
     main()
